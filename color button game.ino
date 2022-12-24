@@ -7,23 +7,18 @@
 #define DITEKAN LOW
 #define DILEPAS HIGH
 
-enum Pin{
+enum Pin : uint8_t{
     ledPin,
     tombol1=1, tombol2=7, tombol3=12, start=2,
     D7=A0,D6,D5,D4,En,RS
 };
-enum Color{hitam, biru, hijau, cyan, merah, magenta, kuning, putih};
-
-void welcomeMessage();
-int showQuestion();
-void waitForAnswer();
-void judgeAnswer(int);
+enum Color : uint8_t{hitam, biru, hijau, cyan, merah, magenta, kuning, putih};
 
 Adafruit_NeoPixel leds(NUMLEDS, ledPin, NEO_GRB + NEO_KHZ800);
 LiquidCrystal lcd(RS,En,D4,D5,D6,D7);
 constexpr int timelimit = 1000;
 unsigned long startTime;
-uint32_t colors[]{
+const uint32_t colors[]{
     leds.Color(0,0,0),
     leds.Color(0,0,255),
     leds.Color(0,255,0),
@@ -33,18 +28,19 @@ uint32_t colors[]{
     leds.Color(255,255,0),
     leds.Color(255,255,255)
 };
-char colorNames[][8]{
+constexpr char colorNames[][8]{
     "Hitam", "Biru", "Hijau", "Cyan",
     "Merah", "Magenta", "Kuning", "Putih"
 };
-Pin buttons[]{tombol1, tombol2, tombol3, start};
+constexpr Pin buttons[]{tombol1, tombol2, tombol3, start};
 
 void setup(){
     MCUSR &= ~(1<<WDRF); // Clear WDRF in MCUSR
     wdt_disable();
     delay(2000);
     
-    for(Pin tombol : buttons) pinMode(tombol, INPUT_PULLUP);
+    for(Pin tombol : buttons) 
+      pinMode(tombol, INPUT_PULLUP);
 
     leds.begin();
     leds.setBrightness(255);
@@ -57,7 +53,7 @@ void setup(){
 }
 
 void loop(){
-    int jawaban = showQuestion();
+    uint8_t jawaban = showQuestion();
     waitForAnswer();
     judgeAnswer(jawaban);
 }
@@ -84,14 +80,8 @@ void welcomeMessage(){
     delay(2000);
 }
 
-bool sudahTerpakai(Color warnaRandom, Color terpakai[], int index){
-    for(int i=0; i<index; i++) 
-        if(warnaRandom == terpakai[i]) return true;
-    return false;
-}
-
 void matikanLED(){
-    for(int i=0; i<NUMLEDS; i++) leds.setPixelColor(i, colors[hitam]);
+    for(uint8_t i=0; i<NUMLEDS; i++) leds.setPixelColor(i, colors[hitam]);
     leds.show();
 }
 
@@ -99,21 +89,22 @@ bool waktuHabis(){
     return millis() - startTime > timelimit;
 }
 
-int showQuestion(){
-    Color warnaBenar = (Color)random(NUMCOLORS);
-    int ledYangBenar = random(NUMLEDS);
+uint8_t showQuestion(){
+    const Color warnaBenar = (Color)random(NUMCOLORS);
+    const uint8_t ledYangBenar = random(NUMLEDS);
 
     Color warnaRandom;
-    Color terpakai[NUMLEDS];
-    for(int i=0; i<NUMLEDS; i++){
+    bool sudahTerpakai[NUMLEDS]{false};
+    for(uint8_t i=0; i<NUMLEDS; i++){
         if(i == ledYangBenar){
             leds.setPixelColor(i, colors[warnaBenar]);
-            terpakai[i] = warnaBenar;
-        }else{
+            sudahTerpakai[warnaBenar] = true;
+        }
+        else{
             do warnaRandom = (Color)random(NUMCOLORS);
-            while(warnaRandom == warnaBenar || sudahTerpakai(warnaRandom, terpakai, i));
+            while(warnaRandom == warnaBenar || sudahTerpakai[warnaRandom]);
             leds.setPixelColor(i, colors[warnaRandom]);
-            terpakai[i] = warnaRandom;
+            sudahTerpakai[warnaRandom] = true;
         }
     }
     leds.show();
@@ -134,16 +125,17 @@ void waitForAnswer(){
     );
 }
 
-void judgeAnswer(int jawaban){
+void judgeAnswer(uint8_t jawaban){
     lcd.clear();
 
     static int skor = 0;
     if(digitalRead(buttons[jawaban]) == DITEKAN){
         wdt_reset();
         lcd.print("BETULL!!!");
-        skor++;
+        ++skor;
         delay(1000);
-    }else{
+    }
+    else{
         if(waktuHabis()) lcd.print("WAKTU HABIS!!!");
         else lcd.print("SALAH!!!");
         delay(2000);
